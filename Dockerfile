@@ -32,11 +32,16 @@ ENV PUPPETSERVER_JAVA_ARGS="-Xms512m -Xmx512m"
 
 # Expose Puppet Master port and webhook port
 EXPOSE 8140
+EXPOSE 8141
 
 # Handle runtime configuration
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod 755 /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
+
+# Install scripts
+COPY puppetmaster-deployfiles puppetmaster-webhook /usr/local/bin/
+RUN chmod 755 /usr/local/bin/puppetmaster-*
 
 # Run Puppet Server and webhook
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

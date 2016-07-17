@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# Source config, if available
+[ -f /etc/puppetmaster.conf ] && . /etc/puppetmaster.conf
+
+PUPPET_CONF_DIR=/etc/puppet
+[ -d /etc/puppetlabs ] && PUPPET_CONF_DIR=/etc/puppetlabs
+
+# Only argument should be the branch to operate on
+branch=$1
+
+WD=/tmp/puppet-environments
+[ ! -d $WD ] && mkdir -p $WD
+cd $WD
+
+# Get latest source from git repo
+echo "Fetching latest source..."
+if [ ! -d $branch ]; then
+    git clone $GITREPO -b $branch $branch
+    if [ $? -ne 0 ]; then
+        echo "Error cloning git repo."
+        exit 1
+    fi
+else
+    (cd $branch && git pull)
+    if [ $? -ne 0 ]; then
+        echo "Error pulling from git repo."
+        exit 1
+    fi
+fi
+
+# Deploy
+echo "Deploying puppet configuration..."
+rsync -av $branch $PUPPET_CONF_DIR/code/environments --delete --exclude=".tmp"
+if [ $? -ne 0 ]; then
+    echo "Error deploying puppet environment configuration."
+    exit 1
+fi
+
+# Apply librarian-puppet, if it's config exists
+if [ -f $PUPPET_CONF_DIR/code/environments/$branch/Puppetfile ]; then
+    cd $PUPPET_CONF_DIR/code/environments/$branch
+    librarian-puppet install --verbose
+    if [ $? -ne 0 ]; then
+        echo "Error running librarian-puppet."
+        exit 1
+    fi
+fi
+
+echo "Done."

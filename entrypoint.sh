@@ -10,5 +10,8 @@ cat >/etc/puppetmaster.conf <<EOF
 export GITREPO=$GITREPO
 EOF
 
+# Update and re-build each environment
+/usr/local/bin/puppetmaster-deployfiles
+
 exec "$@"
 
