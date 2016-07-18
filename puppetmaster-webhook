@@ -42,13 +42,48 @@ class HookHandler(BaseHTTPRequestHandler):
         # Load the post data from its json form to a dict
         post_body = json.loads(post_body)
 
+        # If this is a Stash/BitBucket webhook...
+        if 'refChanges' in post_body:
+            branch = self.handle_stash_webhook(post_body)
+
+        # If this is a GOGS webhook...
+        elif 'refs' in post_body and 'secret' in post_body:
+            branch = self.handle_gogs_webhook(post_body)
+
+        else:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write('%s\n' % json.dumps({ 'detail': 'No attributes we can use to detect request format.' }))
+            return
+
+        # Start a thread to deal with the received hook
+        thread.start_new_thread(hook_received, (post_body, branch))
+
+        # Send the client a success reponse
+        if branch is not None:
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write('\n')
+        return
+
+    def handle_stash_webhook(self, post_body):
+        # Determine the branch being pushed to
+        refparts = post_body['refChanges'][0]['refId'].split('/')
+        if refparts[0] != 'refs' or refparts[1] != 'heads':
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write('%s\n' % json.dumps({ 'detail': 'Not a head we recognise.' }))
+            return None
+        return refparts[2]
+
+    def handle_gogs_webhook(self, post_body):
         # Check secret key matches
         secret = post_body['secret']
         if secret != os.environ['WEBHOOK_TOKEN']:
             self.send_response(401)
             self.end_headers()
             self.wfile.write('%s\n' % json.dumps({ 'detail': 'Invalid secret token.' }))
-            return
+            return None
 
         # Determine the branch being pushed to
         refparts = post_body['ref'].split('/')
@@ -56,17 +91,8 @@ class HookHandler(BaseHTTPRequestHandler):
             self.send_response(400)
             self.end_headers()
             self.wfile.write('%s\n' % json.dumps({ 'detail': 'Not a head we recognise.' }))
-            return
-        branch = refparts[2]
-
-        # Start a thread to deal with the received hook
-        thread.start_new_thread(hook_received, (post_body, branch))
-
-        # Send the client a success reponse
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write('\n')
-        return
+            return None
+        return refparts[2]
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle requests in a separate thread."""
