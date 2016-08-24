@@ -102,7 +102,7 @@ def hook_received(hook, branch):
     Calls the hook function in the file hooks.py
     """
 
-    logger.info("Webhook processing push message for " % branch)
+    logger.info("Webhook processing push message for %s" % branch)
     #exec_hook = getattr(hooks, hook["object_kind"])
     #exec_hook = hook["object_kind"]
     # Call the function and pass it the hook
