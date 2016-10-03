@@ -22,6 +22,8 @@ RUN apt-get install -y -f curl && \
 RUN apt-get install --no-install-recommends -y supervisor ca-certificates nginx puppetserver puppet-agent librarian-puppet git rsync sudo && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+# See http://stackoverflow.com/questions/38645491/vagrant-failing-to-install-puppet#38648519
+RUN puppetserver gem install json_pure -v 2.0.1
 RUN puppetserver gem install hiera-eyaml hiera-puppet r10k
 
 VOLUME /etc/puppetlabs
